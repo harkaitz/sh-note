@@ -1,0 +1,118 @@
+#!/bin/sh -e
+#L:
+#L:  MIT License
+#L:  
+#l:  Bug reports, feature requests to gemini|https://harkadev.com/oss
+#l:  Copyright (c) 2022 Harkaitz Agirre, harkaitz.aguirre@gmail.com
+#L:
+#L:  Permission is hereby granted, free of charge, to any person obtaining
+#L:  a copy of this software and associated documentation files (the
+#L:  "Software"), to deal in the Software without restriction, including
+#L:  without limitation the rights to use, copy, modify, merge, publish,
+#L:  distribute, sublicense, and/or sell copies of the Software, and to
+#L:  permit persons to whom the Software is furnished to do so, subject to
+#L:  the following conditions:
+#L:
+#L:  The above copyright notice and this permission notice shall be
+#L:  included in all copies or substantial portions of the Software.
+#L:
+#L:  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#L:  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+#L:  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+#L:  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+#L:  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#L:  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+#L:  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+##:
+#h: Usage: $0 -e|-v|-l|-d|NOTE
+#h:
+#h: Simple note taking utility.
+#h:
+#h: -v      : Show configuration.
+#h: -e      : Edit notes file.
+#h: -l      : List notes.
+#h: -d      : Delete last note.
+#h: NOTE... : Add note.
+note() {
+    local OPTIND optopt= op=note_save
+    ## Parse command line options.
+    while getopts "vled" optopt;do # OPTARG
+        case $optopt in
+            v)  note_show_variables; return 0;;
+            l)  local op=note_print ;;
+            e)  local op=note_edit  ;;
+            d)  local op=note_del   ;;
+            \?) return 1;;
+        esac
+    done
+    shift $(( $OPTIND - 1 ))
+    ## Operations
+    "${op}" "$@"
+}
+note_show_variables() {
+    printf '%-20s : %s\n' NOTE_FILE   "${NOTE_FILE}"
+    printf '%-20s : %s\n' EDITOR      "${EDITOR:-vi}"
+    printf '%-20s : %s\n' EDITOR_X    "${EDITOR_X:-xdg-open}"
+}
+note_calc_variables() {
+    NOTE_FILE="${NOTE_FILE:-${HOME}/notes.txt}"
+}
+## -----------------------------------------------------------------------------
+note_save() {
+    local note="$*"
+    if test ! -n "$1";then
+        if test -t 0;then
+            printf 'Note> '; read note
+        else
+            local note="`dmenu -p 'Note:'`"
+        fi
+    fi
+    if test -n "${note}";then
+        local date="`date '+%Y-%m-%d %H:%m'`"
+        printf '%s - %s\n' "${date}" "${note}" >> "${NOTE_FILE}"
+    fi
+}
+note_print() {
+    if test -f "${NOTE_FILE}";then
+        if test -t 2;then
+            cat "${NOTE_FILE}"
+        else
+            local text="`cat "${NOTE_FILE}" \
+            | dmenu -p 'notes:' -l 10       \
+            | sed 's/^....-..-..  *..:.. - *//'`"
+            if test -n "${text}" && which xclip >/dev/null 2>&1;then
+                printf '%s' "${text}" | xclip -selection "clipboard"
+                printf '%s' "${text}" | xclip -selection "primary"
+                printf '%s' "${text}" | xclip -selection "secondary"
+            fi
+        fi
+    fi
+}
+note_edit() {
+    if test -t 0;then
+        ${EDITOR:-vi} "${NOTE_FILE}"
+    else
+        ${EDITOR_X:-xdg-open} "${NOTE_FILE}"
+    fi
+}
+note_del() {
+    if test -f "${NOTE_FILE}";then
+        sed -i'.tmp' '$d' "${NOTE_FILE}"
+        rm "${NOTE_FILE}.tmp"
+    fi
+}
+## -----------------------------------------------------------------------------
+note_calc_variables
+SCRNAME="`basename "$0"`"
+if test @"${SCRNAME}" = @"note";then
+    case "${1}" in
+        -h|--help)
+            sed -n 's/^ *#h: \{0,1\}//p' "$0" | sed "s|\\\$0|${SCRNAME}|g"
+            echo ""
+            sed -n 's/^ *#l: \{0,2\}//p' "$0"
+            ;;
+        *)
+            note "$@"
+            ;;
+    esac
+fi
