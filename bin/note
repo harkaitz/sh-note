@@ -26,7 +26,9 @@
 ##:
 #h: Usage: $0 -e|-v|-l|-d|NOTE
 #h:
-#h: Simple note taking utility.
+#h: Simple note taking utility. When launched from terminal it
+#h: will use *${EDITOR:-vi}*. Without terminal *dmenu(1)* and
+#h: *xdg-open(1)*
 #h:
 #h: -v      : Show configuration.
 #h: -e      : Edit notes file.

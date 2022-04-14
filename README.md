@@ -8,7 +8,9 @@ note
 
     Usage: note -e|-v|-l|-d|NOTE
     
-    Simple note taking utility.
+    Simple note taking utility. When launched from terminal it
+    will use *${EDITOR:-vi}*. Without terminal *dmenu(1)* and
+    *xdg-open(1)*
     
     -v      : Show configuration.
     -e      : Edit notes file.
